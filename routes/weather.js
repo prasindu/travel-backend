@@ -3,8 +3,6 @@ const axios   = require('axios');
 const router  = express.Router();
 
 // POST /api/weather
-// Body: { lat, lng, city, locationName, locationType }
-// Returns weather + alternative indoor places if it's raining outdoors
 router.post('/', async (req, res) => {
     try {
         const { lat, lng, city, locationName, locationType } = req.body;
@@ -30,23 +28,25 @@ router.post('/', async (req, res) => {
         const humidity  = weatherRes.data.main.humidity;
         const windSpeed = weatherRes.data.wind.speed;
 
-        // ── Decide if we need to reroute ──────────────────────
-        const outdoorTypes   = ['park', 'zoo', 'natural_feature', 'campground', 'beach'];
-        const badWeather     = ['Rain', 'Thunderstorm', 'Drizzle', 'Snow'];
-        const isOutdoor      = outdoorTypes.includes(locationType);
+        const outdoorTypes   = ['park', 'zoo', 'natural_feature', 'campground', 'beach', 'tourist_attraction', 'shrine', 'place_of_worship'];
+
+        const badWeather     = ['Rain', 'Thunderstorm', 'Drizzle', 'Snow', 'Clouds']; 
+        
+        const isOutdoor      = outdoorTypes.includes(locationType) || true; 
         const isRaining      = badWeather.includes(condition);
-        const rerouteSuggested = isOutdoor && isRaining;
+        
+       
+        const rerouteSuggested = isRaining; 
 
         let message      = `Weather is fine (${temp}°C). Enjoy your trip!`;
         let alternatives = [];
 
         if (rerouteSuggested) {
-            message = `Warning! Rain detected near ${locationName}. Showing indoor alternatives.`;
+            message = `Warning! ${condition} detected near ${locationName}. We suggest visiting these indoor places instead.`;
 
-            // Fetch nearby indoor places (museums / galleries)
             const placesUrl =
                 `https://maps.googleapis.com/maps/api/place/textsearch/json` +
-                `?query=museum+OR+art+gallery+in+${encodeURIComponent(city)}+Sri+Lanka` +
+                `?query=museum+OR+shopping+mall+in+${encodeURIComponent(city)}+Sri+Lanka` +
                 `&key=${process.env.GOOGLE_PLACES_API_KEY}`;
 
             const placesRes = await axios.get(placesUrl, { timeout: 8000 });
@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
                 humidity,
                 windSpeed
             },
-            rerouteSuggested,
+            rerouteSuggested, 
             message,
             alternatives
         });
