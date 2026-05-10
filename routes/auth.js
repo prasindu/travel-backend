@@ -74,6 +74,39 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// ── PUT /api/auth/password (Change Password) ──────────────────
+router.put('/password', protect, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, error: 'Please provide both passwords' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+        }
+
+        
+        const user = await User.findById(req.userId).select('+password');
+
+      
+        if (!(await user.comparePassword(currentPassword))) {
+            return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password updated successfully' });
+
+    } catch (error) {
+        console.error('Password Change Error:', error.message);
+        res.status(500).json({ success: false, error: 'Failed to update password' });
+    }
+});
+
+
 // ── GET /api/auth/me (Protected) ──────────────────────────────
 router.get('/me', async (req, res) => {
     try {
