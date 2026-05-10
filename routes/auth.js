@@ -5,9 +5,27 @@ const User    = require('../models/User');
 
 // ── Generate JWT ──────────────────────────────────────────────
 const signToken = (id) =>
-    jwt.sign({ id }, process.env.JWT_SECRET , {
+    jwt.sign({ id }, process.env.JWT_SECRET || 'lanka_trails_secret_2024', {
         expiresIn: '30d'
     });
+
+// ── Protect Middleware (අලුතින් එකතු කළ කොටස) ───────────────
+const protect = (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, error: 'Not authenticated' });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'lanka_trails_secret_2024');
+
+        req.userId = decoded.id; // User ID එක request එකට දානවා
+        next(); // ඊළඟ function එකට යන්න දෙනවා
+    } catch (error) {
+        res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+};
 
 // ── POST /api/auth/register ───────────────────────────────────
 router.post('/register', async (req, res) => {
@@ -87,10 +105,12 @@ router.put('/password', protect, async (req, res) => {
             return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
         }
 
-        
         const user = await User.findById(req.userId).select('+password');
+        
+        if (!user) {
+             return res.status(404).json({ success: false, error: 'User not found' });
+        }
 
-      
         if (!(await user.comparePassword(currentPassword))) {
             return res.status(401).json({ success: false, error: 'Current password is incorrect' });
         }
@@ -106,19 +126,10 @@ router.put('/password', protect, async (req, res) => {
     }
 });
 
-
 // ── GET /api/auth/me (Protected) ──────────────────────────────
-router.get('/me', async (req, res) => {
+router.get('/me', protect, async (req, res) => {
     try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ success: false, error: 'Not authenticated' });
-        }
-
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'lanka_trails_secret_2024');
-
-        const user = await User.findById(decoded.id);
+        const user = await User.findById(req.userId);
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
