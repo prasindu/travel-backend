@@ -30,13 +30,13 @@ router.post('/', async (req, res) => {
 
         const outdoorTypes   = ['park', 'zoo', 'natural_feature', 'campground', 'beach', 'tourist_attraction', 'shrine', 'place_of_worship'];
 
-        const badWeather     = ['Rain', 'Thunderstorm', 'Drizzle', 'Snow', 'Clouds']; 
+        const badWeather     = ['Rain', 'Thunderstorm', 'Drizzle', 'Snow']; 
         
-        const isOutdoor      = outdoorTypes.includes(locationType) || true; 
+        const isOutdoor      = outdoorTypes.includes(locationType) ; 
         const isRaining      = badWeather.includes(condition);
         
        
-        const rerouteSuggested = isRaining; 
+        const rerouteSuggested = isOutdoor && isRaining;
 
         let message      = `Weather is fine (${temp}°C). Enjoy your trip!`;
         let alternatives = [];
