@@ -9,41 +9,50 @@ const PYTHON_API_URL = process.env.PYTHON_AI_URL || 'http://127.0.0.1:8000/api/r
 router.post('/', async (req, res) => {
     try {
         const userMessage = req.body.prompt;
+        const cleanMessage = userMessage.toLowerCase().trim();
         const chatHistory = req.body.history || [];
         const limitedHistory = chatHistory.slice(-6);
 
-        // 1. Python AI එකෙන් අදාළ තැන් හොයාගැනීම
+        // 🔴 1. Greeting Detector (අලුතින් එකතු කරපු කොටස)
+        const greetings = ['hi', 'hello', 'hey', 'good morning', 'good evening', 'hello there', 'hi there'];
+        
+        // පණිවිඩය අකුරු 15කට වඩා අඩු නම් සහ greeting එකක් නම්, කෙළින්ම උත්තර දෙමු
+        if (cleanMessage.length < 15 && greetings.some(g => cleanMessage.includes(g))) {
+            return res.status(200).json({ 
+                success: true, 
+                reply: "Hello! 👋 I am your Lanka Trails Smart Guide. Where would you like to travel today? Tell me what kind of vibe you're looking for (e.g., 'A relaxing beach in the South' or 'Historical places in Kandy')." 
+            });
+        }
+
+        // 🟢 2. Greeting එකක් නෙවෙයි නම්, සාමාන්‍ය විදිහට AI Process එකට යමු
+        // Python AI එකෙන් අදාළ තැන් හොයාගැනීම
         const pythonResponse = await axios.post(PYTHON_API_URL, { text: userMessage, top_n: 3 });
-        const recommendations = pythonResponse.data.recommendations; // මෙතන දැන් Array එකක් තියෙනවා
+        const recommendations = pythonResponse.data.recommendations; 
 
         let weatherContext = "";
 
-        // 2. හැම Recommendation එකකටම Weather බලමු (Loop එකක් පාවිච්චි කරලා)
-        // Note: මේකට Google Geocoding පාවිච්චි කරලා ලස්සනට කරන්න පුළුවන්
+        // 3. හැම Recommendation එකකටම Weather බලමු
         for (const place of recommendations) {
             try {
-                // සරලව නගරය අනුව coordinates ගන්න (උදාහරණයක් ලෙස)
                 const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place.destination)}&key=${process.env.GOOGLE_PLACES_API_KEY}`;
                 const geoRes = await axios.get(geoUrl);
                 
                 if (geoRes.data.results.length > 0) {
                     const { lat, lng } = geoRes.data.results[0].geometry.location;
                     
-                    // අපේම Weather API එකට කෝල් එක දෙනවා
                     const weatherRes = await axios.post(`http://127.0.0.1:${process.env.PORT || 5000}/api/weather`, {
                         lat, lng, city: place.destination, locationName: place.destination, locationType: "tourist_attraction"
                     });
 
                     const w = weatherRes.data.weather;
-
-weatherContext += `Location: ${place.destination}, Condition: ${w.condition}, Temp: ${w.temperature}°C, Message: ${weatherRes.data.message} | `;
+                    weatherContext += `Location: ${place.destination}, Condition: ${w.condition}, Temp: ${w.temperature}°C, Message: ${weatherRes.data.message} | `;
                 }
             } catch (err) {
                 console.log(`Weather failed for ${place.destination}`);
             }
         }
 
-        // 3. දැන් මේ ඔක්කොම Context එක AI එකට දෙනවා
+        // 4. දැන් මේ ඔක්කොම Context එක Groq AI එකට දෙනවා
         const placesList = recommendations.map(p => p.destination).join(", ");
         const systemPrompt = `
 You are the official 'Lanka Trails' Smart Travel Guide. Your goal is to provide a seamless, natural, and friendly experience for travelers.
