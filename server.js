@@ -33,7 +33,7 @@ app.use('/api/directions',  require('./routes/directions'));
 app.use('/api/weather',     require('./routes/weather'));
 app.use('/api/optimize',    require('./routes/optimize'));
 app.use('/api/itinerary',   require('./routes/itinerary'));
-
+app.use('/api/chat',        require('./routes/chat'));
 // ─── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
