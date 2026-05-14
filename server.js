@@ -5,8 +5,27 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// ─── Middleware ───────────────────────────────────────────────
-app.use(cors());
+
+const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://travel-planner-frontend-m23t86oe5-prasindus-projects-8a9c175b.vercel.app'
+];
+
+// ආරක්ෂිත CORS රීති
+app.use(cors({
+    origin: function (origin, callback) {
+        
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS Policy: This origin is not allowed'));
+        }
+    },
+    credentials: true, 
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // ─── MongoDB Connection ───────────────────────────────────────
@@ -26,14 +45,15 @@ app.get('/api/health', (req, res) => {
 });
 
 // ─── Routes ───────────────────────────────────────────────────
-app.use('/api/auth',        require('./routes/auth'));        // NEW
-app.use('/api/trips',       require('./routes/trips'));       // NEW
+app.use('/api/auth',        require('./routes/auth'));        
+app.use('/api/trips',       require('./routes/trips'));       
 app.use('/api/suggestions', require('./routes/suggestions'));
 app.use('/api/directions',  require('./routes/directions'));
 app.use('/api/weather',     require('./routes/weather'));
 app.use('/api/optimize',    require('./routes/optimize'));
 app.use('/api/itinerary',   require('./routes/itinerary'));
 app.use('/api/chat',        require('./routes/chat'));
+
 // ─── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
